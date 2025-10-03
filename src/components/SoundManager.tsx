@@ -1,48 +1,74 @@
-import React, { useEffect, useRef, useState } from 'react';
+// frontend/src/components/SoundManager.tsx
+import React, { useEffect, useRef } from "react";
 
-export default function SoundManager({ enabled }: { enabled: boolean }) {
+type Props = { enabled?: boolean };
+
+/** ฟัง CustomEvent แล้วเล่นเสียงจาก /public/sounds */
+export default function SoundManager({ enabled = true }: Props) {
   const startRef = useRef<HTMLAudioElement | null>(null);
-  const warnRef = useRef<HTMLAudioElement | null>(null);
-  const upRef = useRef<HTMLAudioElement | null>(null);
-  const [ok, setOk] = useState(false);
+  const warn60Ref = useRef<HTMLAudioElement | null>(null);
+  const warn30Ref = useRef<HTMLAudioElement | null>(null);
+  const timeupRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const onStart = () => enabled && startRef.current?.play().catch(()=>visual('Start'));
-    const onWarn = () => enabled && warnRef.current?.play().catch(()=>visual('30s left'));
-    const onUp = () => enabled && upRef.current?.play().catch(()=>visual('Time up'));
-    window.addEventListener('st:sound:start' as any, onStart);
-    window.addEventListener('st:sound:warn30s' as any, onWarn);
-    window.addEventListener('st:sound:timeup' as any, onUp);
+    // preload
+    startRef.current = new Audio("/sounds/start.mp3");
+    warn60Ref.current = new Audio("/sounds/warn60s.mp3");
+    warn30Ref.current = new Audio("/sounds/warn30s.mp3");
+    timeupRef.current = new Audio("/sounds/timeup.mp3");
+
+    [startRef, warn60Ref, warn30Ref, timeupRef].forEach((r) => {
+      if (r.current) {
+        r.current.preload = "auto";
+        r.current.crossOrigin = "anonymous";
+        r.current.volume = 1.0;
+      }
+    });
+
+    // unlock audio on first user gesture (กัน autoplay policy)
+    const unlock = () => {
+      [startRef, warn60Ref, warn30Ref, timeupRef].forEach((r) => {
+        if (r.current) {
+          r.current.muted = false;
+        }
+      });
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+    window.addEventListener("click", unlock);
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("touchstart", unlock);
+
+    const playSafe = (ref: React.MutableRefObject<HTMLAudioElement | null>) => {
+      if (!enabled || !ref.current) return;
+      try {
+        ref.current.currentTime = 0;
+        void ref.current.play();
+      } catch {}
+    };
+
+    const onStart = () => playSafe(startRef);
+    const onWarn60 = () => playSafe(warn60Ref);
+    const onWarn30 = () => playSafe(warn30Ref);
+    const onTimeUp = () => playSafe(timeupRef);
+
+    window.addEventListener("st:sound:start", onStart);
+    window.addEventListener("st:sound:warn60s", onWarn60);
+    window.addEventListener("st:sound:warn30s", onWarn30);
+    window.addEventListener("st:sound:timeup", onTimeUp);
+
     return () => {
-      window.removeEventListener('st:sound:start' as any, onStart);
-      window.removeEventListener('st:sound:warn30s' as any, onWarn);
-      window.removeEventListener('st:sound:timeup' as any, onUp);
+      window.removeEventListener("st:sound:start", onStart);
+      window.removeEventListener("st:sound:warn60s", onWarn60);
+      window.removeEventListener("st:sound:warn30s", onWarn30);
+      window.removeEventListener("st:sound:timeup", onTimeUp);
+
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
     };
   }, [enabled]);
 
-  const visual = (txt: string) => {
-    const el = document.createElement('div');
-    el.textContent = `🔔 ${txt}`;
-    el.className = 'fixed top-4 right-4 bg-yellow-300 text-black px-3 py-2 rounded shadow';
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(), 1500);
-  };
-
-  // try preload
-  useEffect(() => {
-    Promise.all([
-      startRef.current?.load(),
-      warnRef.current?.load(),
-      upRef.current?.load()
-    ]).finally(() => setOk(true));
-  }, []);
-
-  return (
-    <>
-      <audio ref={startRef} src="/sounds/start.mp3" preload="auto" />
-      <audio ref={warnRef} src="/sounds/warn30s.mp3" preload="auto" />
-      <audio ref={upRef} src="/sounds/timeup.mp3" preload="auto" />
-      <div className="text-xs opacity-60">{enabled ? (ok ? '🔊 Sound ready' : '🔊 Preloading...') : '🔇 Sound disabled'}</div>
-    </>
-  );
+  return null; // ตัวจัดการเสียง ไม่ต้องมี UI
 }
