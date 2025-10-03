@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ฟอนต์หลัก */
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+/* ปุ่ม */
+button {
+  @apply px-4 py-2 rounded-xl bg-brand text-white 
+         hover:bg-brand-dark 
+         transition-colors duration-200 
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* อินพุตและ select */
+input, select {
+  @apply text-slate-900 px-3 py-2 rounded-lg border border-slate-300
+         focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent;
+}
+
+/* การ์ด */
+.card {
+  @apply bg-slate-800 rounded-2xl p-6 shadow-soft transition-transform duration-200;
+}
+.card:hover {
+  @apply scale-[1.01];
+}
+
+/* ตาราง */
+table {
+  @apply w-full border-collapse;
+}
+th, td {
+  @apply px-3 py-2;
+}
+thead {
+  @apply bg-slate-700 text-slate-200;
+}
+tbody tr:nth-child(even) {
+  @apply bg-slate-800/50;
+}
